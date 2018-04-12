@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Rust DC, April 2018&mdash;Learn&plus;Try Rust in the Browser via WebAssembly</title>
+    <meta charset="utf-8">
+
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+
+      .acronym { font-variant: small-caps oldstyle-nums; font-size: 120%; }
+
+      blockquote {
+        color: rgb(140, 120, 120);
+        font-style: italic;
+      }
+
+      a {
+        color: lightslategray;
+        text-decoration: none;
+      }
+
+      /*
+      a.try-it::before {
+        font-style: italic;
+        font-size: smaller;
+        content: "«try it»";
+      }
+
+      */
+
+      a:hover, a:active {
+        color: lightsteelblue;
+        text-decoration-color: lightsteelblue;
+      }
+
+      a:active {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+![dino](dino.gif)
+
+---
+
+class: center, middle
+
+### Rust DC—Learn+Try Rust in the Browser via WebAssembly
+
+![rust-wa](rust-wa-smaller.png)
+
+### Scott Steele (github.com/scooter-dangle)
+
+---
+
+# Hello!!
+
+![hello](me-face.png)
+
+--
+
+## My bona fides
+
+--
+
+## Look what I done!
+
+---
+
+![rust-wa](rust-wa.png)
+
+---
+
+![fast](Ab.png)
+
+---
+
+name: point
+
+## Why to do??
+
+---
+
+template: point
+
+### Speeds
+
+--
+
+#### parsing
+
+--
+
+#### jam-packed with that great taste that machine's love!
+
+--
+
+[www.smashingmagazine.com/2017/05/abridged-cartoon-introduction-webassembly/](https://www.smashingmagazine.com/2017/05/abridged-cartoon-introduction-webassembly/)
+
+---
+
+template: point
+
+![library](library.jpg)
+
+---
+
+template: point
+
+### Libraries!
+
+--
+
+name: point2
+
+#### Write once, run from:
+
+* Python
+* Ruby
+* Go
+* Lua
+* JS (Node)
+
+---
+
+template: point2
+
+...
+* Every JQuery plugin on God's Green Earth!
+
+---
+
+template: point2
+
+...
+* JS (browser)
+
+---
+
+template: point
+name: pointrust
+
+### Rust!
+
+---
+template: point
+
+![dancing-ferris](dancing-ferris.gif)
+---
+template: pointrust
+--
+* Efficient, expressive compile time checks
+
+--
+* Fast enough that you can _implement first_
+
+--
+* Structured enough that (when you need to) you can _optimize later_
+
+--
+  * _much_ later
+
+--
+  * _and_ without breaking stuff
+
+---
+name: look
+
+## Whatsit look like??
+
+---
+template: look
+
+![wasmbin](wasmbin.png)
+---
+template: look
+
+![wast](wast.png)
+--
+
+* Gonna need an uber editor?
+
+---
+template: look
+
+### Data types
+
+--
+#### numbers
+* `i32`
+* `i64`
+* `f32`
+* `f64`
+
+---
+name: how
+
+## How to do?
+
+---
+template: how
+
+![scheme1](scheme1.png)
+
+---
+template: how
+
+![scheme2](scheme2.png)
+
+---
+template: how
+
+![scheme3](scheme3.png)
+
+---
+name: emscripten
+
+## Emscripten
+
+---
+template: emscripten
+
+* [kripken.github.io/emscripten-site/](https://kripken.github.io/emscripten-site/)
+
+--
+
+* [github.com/scooter-dangle/rust-wasm](https://github.com/scooter-dangle/rust-wasm) (master branch is Emscripten example)
+
+---
+template: emscripten
+![ems1](ems1.png)
+
+---
+template: emscripten
+![ems2](ems2.png)
+
+---
+template: emscripten
+![ems3](ems3.png)
+
+---
+template: emscripten
+
+```rust
+// main.rs
+fn main() {
+    /* Intentionally left blank */
+}
+
+//
+// ...
+//
+
+fn safe_regex_compare(reg: String, target: String) -&gt; Result&lt;bool, Box&lt;Error&gt;&gt; {
+    regex!(&amp;reg).map(|reg| reg.is_match(&amp;target))
+}
+
+// See the declarations of this function in .cargo/config and wasm.html
+#[no_mangle]
+pub unsafe fn regex_compare(reg: *const c_char, target: *const c_char) -&gt; bool {
+    let reg    = ptr_to_string!(reg);
+    let target = ptr_to_string!(target);
+    safe_regex_compare(reg, target).unwrap()
+}
+
+//
+// ...
+//
+
+#[no_mangle]
+pub unsafe fn validate_regex(reg: *const c_char) -> *mut c_char {
+  /* ... */
+}
+```
+
+---
+template: emscripten
+
+```javascript
+  var Module = {
+    wasmBinaryFile: 'site.wasm',
+    onRuntimeInitialized: () =&gt; {
+      // Wrap exported functions
+      const cwrappings = {
+        regex_compare:  ['regex_compare', 'bool', ['string', 'string']],
+        validate_regex: ['validate_regex', 'string', ['string']],
+      }
+
+      var lib = {}
+
+      for (var fn in cwrappings) {
+        lib[fn] = Module.cwrap(...cwrappings[fn])
+      }
+
+      // Wrap regex validation
+      const validate_regex = function(string) {
+        const regex_err = lib.validate_regex(string)
+        return regex_err === "" ? null : regex_err
+      }
+      /* ... */
+    },
+    /* ... */
+  }
+```
+
+---
+template: emscripten
+
+```javascript
+  var Module = {
+    wasmBinaryFile: 'site.wasm',
+    onRuntimeInitialized: () =&gt; {
+      // Wrap exported functions
+      const cwrappings = {
+        regex_compare:  ['regex_compare', 'bool', ['string', 'string']],
+*       validate_regex: ['validate_regex', 'string', ['string']],
+      }
+
+      var lib = {}
+
+      for (var fn in cwrappings) {
+*       lib[fn] = Module.cwrap(...cwrappings[fn])
+      }
+
+      // Wrap regex validation
+*     const validate_regex = function(string) {
+*       const regex_err = lib.validate_regex(string)
+*       return regex_err === "" ? null : regex_err
+*     }
+      /* ... */
+    },
+    /* ... */
+  }
+```
+
+---
+template: emscripten
+
+```
+$ cat .cargo/config
+[target.wasm32-unknown-emscripten]
+rustflags = [
+    "-Clink-args=-O3 -s EXPORTED_FUNCTIONS=['_regex_compare','_validate_regex'] -s TOTAL_MEMORY=134217728", # 2^27
+]
+```
+
+
+---
+template: emscripten
+
+```
+$ head --lines 1 Dockerfile
+FROM apiaryio/ecc
+```
+
+---
+template: emscripten
+
+<iframe src="./site"
+        width="100%" height="100%" frameborder="0"
+></iframe>
+
+---
+name: wasm-bindgen
+## Wasm Bindgen
+
+---
+template: wasm-bindgen
+* [github.com/alexcrichton/wasm-bindgen](https://github.com/alexcrichton/wasm-bindgen)
+
+--
+
+* [github.com/scooter-dangle/rust-wasm/tree/wasm-bindgen](https://github.com/scooter-dangle/rust-wasm/tree/wasm-bindgen) (`wasm-bindgen` branch is Wasm Bindgen example)
+
+---
+template: wasm-bindgen
+![wasmbindgen1](wasmbindgen1.png)
+
+---
+template: wasm-bindgen
+![wasmbindgen2](wasmbindgen2.png)
+
+---
+template: wasm-bindgen
+![wasmbindgen3](wasmbindgen3.png)
+
+---
+template: wasm-bindgen
+![wasmbindgen4](wasmbindgen4.png)
+
+---
+template: wasm-bindgen
+
+```rust
+#[wasm_bindgen]
+pub struct CompiledRegex {
+    compiled_regex: Option&lt;Regex&gt;,
+    pub error: String,
+}
+```
+
+---
+template: wasm-bindgen
+
+```rust
+#[wasm_bindgen]
+impl CompiledRegex {
+    pub fn new(reg: &amp;str) -&gt; CompiledRegex {
+        let (compiled_regex, error) = match Regex::new(reg) {
+            Ok(reg) =&gt; (Some(reg), &quot;&quot;.into()),
+            Err(error) =&gt; (None, error.description().into()),
+        };
+
+        Self { compiled_regex, error }
+    }
+
+    pub fn is_match(&amp;self, target: &amp;str) -&gt; bool {
+        self.compiled_regex
+            .as_ref()
+            .map(|reg| reg.is_match(target))
+            .unwrap_or(false)
+    }
+
+    pub fn is_valid(&amp;self) -&gt; bool {
+        self.compiled_regex.is_some()
+    }
+
+    pub fn error_message(&amp;self) -&gt; String {
+        self.error.clone()
+    }
+}
+```
+
+---
+template: wasm-bindgen
+
+```typescript
+/* tslint:disable */
+export class CompiledRegex {
+
+  public ptr: number;
+  constructor(ptr: number);
+  free(): void;
+  static  new(arg0: string): CompiledRegex;
+  is_match(arg0: string): boolean;
+  is_valid(): boolean;
+  error_message(): string;
+}
+```
+
+---
+
+template: wasm-bindgen
+
+```typescript
+/* tslint:disable */
+export class CompiledRegex {
+
+  public ptr: number;
+  constructor(ptr: number);
+  free(): void;
+  static  new(arg0: string): CompiledRegex;
+* is_match(arg0: string): boolean;
+* is_valid(): boolean;
+* error_message(): string;
+}
+```
+
+---
+
+template: wasm-bindgen
+name: wasm-bindgen-js
+
+#### Pseudo index.js
+
+---
+
+template: wasm-bindgen-js
+
+```javascript
+import { CompiledRegex } from './rust_wasm'
+import { booted } from './rust_wasm_bg'
+
+booted.then(() =&gt; {
+  // Will be caching the compiled regular expression between
+  // changes. Needs to respond to the `free` function.
+  var compiled_reg = {
+    free: function() {},
+  }
+
+  /* ... */
+
+  compiled_reg.free()
+  compiled_reg = CompiledRegex.new(reg)
+
+  /* ... */
+
+  if (compiled_reg.is_valid()) {
+    result.ok(reg, compiled_reg.is_match(target), target)
+  } else {
+    result.err(compiled_reg.error_message())
+  }
+})
+```
+
+---
+
+template: wasm-bindgen-js
+
+```javascript
+import { CompiledRegex } from './rust_wasm'
+import { booted } from './rust_wasm_bg'
+
+booted.then(() =&gt; {
+  // Will be caching the compiled regular expression between
+  // changes. Needs to respond to the `free` function.
+  var compiled_reg = {
+    free: function() {},
+  }
+
+  /* ... */
+
+  compiled_reg.free()
+* compiled_reg = CompiledRegex.new(reg)
+
+  /* ... */
+
+* if (compiled_reg.is_valid()) {
+*   result.ok(reg, compiled_reg.is_match(target), target)
+  } else {
+*   result.err(compiled_reg.error_message())
+  }
+})
+```
+
+---
+
+template: wasm-bindgen-js
+
+```javascript
+import { CompiledRegex } from './rust_wasm'
+import { booted } from './rust_wasm_bg'
+
+booted.then(() =&gt; {
+  // Will be caching the compiled regular expression between
+  // changes. Needs to respond to the `free` function.
+* var compiled_reg = {
+*   free: function() {},
+* }
+
+  /* ... */
+
+* compiled_reg.free()
+  compiled_reg = CompiledRegex.new(reg)
+
+  /* ... */
+
+  if (compiled_reg.is_valid()) {
+    result.ok(reg, compiled_reg.is_match(target), target)
+  } else {
+    result.err(compiled_reg.error_message())
+  }
+})
+```
+
+---
+
+template: wasm-bindgen
+
+<iframe src="http://localhost:8081"
+        width="100%" height="100%" frameborder="0"
+><!-- Relies on 'npm run server' running in a built version of the github.com/scooter-dangle/rust-wasm repository on the wasm-bindgen branch after following the build instructions in the README --></iframe>
+
+
+---
+
+template: wasm-bindgen
+
+### Scott's great FFI strategy
+
+Host language-sensitive C struct
+
+---
+
+template: wasm-bindgen
+
+### Scott's great FFI strategy
+
+~~Host language-sensitive C struct~~
+
+--
+
+Opaque pointer exposing rich method sets
+
+---
+
+## Other tools
+
+--
+* Webpack 4: https://medium.com/webpack/webpack-4-beta-try-it-today-6b1d27d7d7e2#4523
+
+--
+  * As of last tinkering, produced larger build artifacts than Emscripten (but this could be due to my not know how to configure correctly)
+
+--
+  * Likely makes it easier to integrate Rust with larger application
+
+--
+  * Based on the scuttlebutt, this and/or Parcel will become the default means of including Rust in a client-side web application
+
+--
+* Stdweb: https://github.com/koute/stdweb
+
+--
+  * Include JS in Rust
+
+--
+  * Less assistance for setting up correctly typed interface (?)
+
+--
+* Wargo
+
+--
+  * Encountered same issues running on macOS as when attempting to install Emscripten locally
+
+--
+  * Does not appear to be under active development any longer
+
+---
+## Final comparison
+
+--
+* Use wasm-bindgen to play around for now, but wait until it runs on `stable` to use in production
+
+--
+* Wade through Emscripten for now, but use Docker as soon as you start having trouble installing it
+
+---
+## Other tools (cont'd)
+
+* WebAssembly Studio: https://webassembly.studio
+
+--
+  * WAT
+
+---
+class: center, middle
+
+# Demos and hacking
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create({
+        highlightLines: true,
+      })
+    </script>
+
+    <!-- ¡DEVELOPMENT ONLY! -->
+    <!--
+    <script>
+      window.onload = () => {
+        const interval = 1000
+
+        fetch(window.location.pathname, { method: 'HEAD' }).then(response => {
+          const original_etag = response.headers.get('etag')
+
+          const check_refresh = () => {
+            fetch(window.location.pathname, {
+              method: 'HEAD',
+              headers: {
+                'user-agent': 'Innernet by Cinco',
+                'none-if-match': original_etag,
+              },
+            }).then(response => {
+              if (response.headers.get('etag') !== original_etag) {
+                window.location.reload()
+              }
+            }).finally(() => {
+              window.setTimeout(check_refresh, interval)
+            })
+          }
+
+          window.setTimeout(check_refresh, interval)
+        })
+      }
+    </script>
+    -->
+
+  </body>
+</html>
